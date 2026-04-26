@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ICU Isolation Decision Aid — Test Version</title>
+  <style>
+    :root {
+      --critical: #3b235a;
+      --critical2: #1f1f1f;
+      --red: #b00020;
+      --orange: #d96c00;
+      --yellow: #f2c94c;
+      --green: #137333;
+      --blue: #0b5cad;
+      --bg: #f6f7f9;
+      --card: #ffffff;
+      --text: #17202a;
+      --muted: #5b6775;
+      --border: #d7dce2;
+      --dangerbg: #fff2f2;
+      --warnbg: #fff8df;
+      --okbg: #effaf3;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: var(--bg); color: var(--text); line-height: 1.35; }
+    header { background: #fff; border-bottom: 1px solid var(--border); padding: 18px 22px; position: sticky; top: 0; z-index: 3; }
+    h1 { margin: 0; font-size: 1.45rem; letter-spacing: -0.02em; }
+    header p { margin: 4px 0 0; color: var(--muted); font-size: 0.95rem; }
+    .banner { margin-top: 10px; padding: 10px 12px; border: 1px solid #e0c36b; background: #fff7d6; border-radius: 8px; font-size: 0.92rem; }
+    main { max-width: 1220px; margin: 0 auto; padding: 18px; display: grid; grid-template-columns: minmax(290px, 390px) 1fr; gap: 16px; }
+    @media (max-width: 880px) { main { grid-template-columns: 1fr; } header { position: static; } }
+    .panel, .result-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+    .panel { padding: 14px; }
+    label { display: block; font-weight: 700; margin-bottom: 6px; }
+    input[type="search"], select, textarea { width: 100%; padding: 10px 11px; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; background: white; }
+    .condition-list { margin-top: 12px; max-height: 420px; overflow: auto; border: 1px solid var(--border); border-radius: 10px; background: #fff; }
+    .condition-button { width: 100%; border: 0; border-bottom: 1px solid var(--border); background: #fff; text-align: left; padding: 11px 12px; cursor: pointer; font-size: 0.95rem; }
+    .condition-button:last-child { border-bottom: 0; }
+    .condition-button:hover, .condition-button.active { background: #eef5ff; }
+    .alias { display: block; color: var(--muted); font-size: 0.78rem; margin-top: 2px; }
+    .modifiers { display: grid; grid-template-columns: 1fr; gap: 7px; margin-top: 12px; }
+    .modifiers label { font-weight: 500; display: flex; gap: 8px; margin: 0; align-items: flex-start; font-size: 0.93rem; }
+    .button-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    button.action { padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; background: #fff; cursor: pointer; font-weight: 700; }
+    button.action.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+    .result-card { overflow: hidden; }
+    .priority-head { padding: 15px 16px; color: white; display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
+    .priority-head h2 { margin: 0; font-size: 1.35rem; }
+    .priority-head .sub { margin-top: 3px; opacity: 0.95; font-size: 0.92rem; }
+    .pill { display: inline-block; border-radius: 999px; padding: 4px 8px; font-size: 0.78rem; font-weight: 700; border: 1px solid rgba(255,255,255,0.5); white-space: nowrap; }
+    .content { padding: 14px 16px 16px; display: grid; gap: 12px; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 960px) { .grid2 { grid-template-columns: 1fr; } }
+    .box { border: 1px solid var(--border); border-radius: 10px; padding: 11px 12px; background: #fff; }
+    .box h3 { margin: 0 0 7px; font-size: 0.98rem; color: #111827; }
+    ul { margin: 0; padding-left: 1.25rem; }
+    li { margin: 3px 0; }
+    .empty { padding: 22px; text-align: center; color: var(--muted); }
+    .footer-note { margin-top: 12px; color: var(--muted); font-size: 0.82rem; }
+    .tag { font-size: 0.78rem; font-weight: 700; border-radius: 5px; padding: 2px 6px; display: inline-block; margin-right: 4px; }
+    .tag.criteria { background: #dff5e7; color: #0f5132; }
+    .tag.senior { background: #fff1b8; color: #664d03; }
+    .tag.specialist { background: #ffd8d8; color: #842029; }
+    .tag.duration { background: #e5e7eb; color: #111827; }
+    .warning { border-color: #f0c36d; background: var(--warnbg); }
+    .danger { border-color: #f0a0a0; background: var(--dangerbg); }
+    .ok { border-color: #9bd6ac; background: var(--okbg); }
+    .small { font-size: 0.88rem; }
+    .copy-status { font-size: 0.85rem; color: var(--green); margin-left: 4px; display: none; }
+    @media print { header, .panel, .button-row { display: none; } main { display: block; padding: 0; } .result-card { box-shadow: none; border: 0; } body { background: #fff; } }
+  </style>
+</head>
+<body>
+<header>
+  <h1>ICU Isolation Decision Aid — Test Version</h1>
+  <p>Pathogen/situation lookup for side-room priority, precaution package and de-escalation criteria.</p>
+  <div class="banner"><strong>Governance note:</strong> Draft decision-support prototype. It supports criteria-led implementation of locally agreed rules; it does not replace IPC, microbiology or senior clinical judgement.</div>
+</header>
+
+<main>
+  <section class="panel" aria-label="Inputs">
+    <label for="conditionSelect">Pathogen or clinical situation</label>
+    <select id="conditionSelect" aria-label="Alphabetic pathogen or clinical situation list"></select>
+
+    <label for="search" style="margin-top:12px;">Optional quick filter</label>
+    <input id="search" type="search" placeholder="Type to narrow the dropdown, e.g. C. auris, COVID, neutropaenia" autocomplete="off" />
+    <p class="footer-note" style="margin-top:8px;">Dropdown is alphabetical by display name. The quick filter also searches aliases such as “C diff”, “flu”, “CPE”, “TB”.</p>
+
+    <div style="margin-top:14px;">
+      <label>Clinical modifiers</label>
+      <div class="modifiers" id="modifiers">
+        <label><input type="checkbox" value="ventilated"> Ventilated, tracheostomy, NIV or HFNO</label>
+        <label><input type="checkbox" value="secretions"> Uncontrolled respiratory secretions / frequent suction / cough</label>
+        <label><input type="checkbox" value="diarrhoea"> Diarrhoea, vomiting or faecal incontinence</label>
+        <label><input type="checkbox" value="wound"> Draining wound, leaking drain or uncontrolled body-fluid contamination</label>
+        <label><input type="checkbox" value="immunosuppressed"> Patient or adjacent patient significantly immunosuppressed</label>
+        <label><input type="checkbox" value="outbreak"> Suspected outbreak / cluster / IPC temporary hold</label>
+        <label><input type="checkbox" value="noSideRoom"> No side room currently available</label>
+      </div>
+    </div>
+
+    <div class="button-row">
+      <button class="action primary" id="copyBtn">Copy documentation note</button>
+      <button class="action" id="printBtn">Print result</button>
+      <button class="action" id="resetBtn">Reset</button>
+      <span class="copy-status" id="copyStatus">Copied</span>
+    </div>
+    <p class="footer-note">No patient-identifiable data are entered or stored. All processing is local in this browser. UK English terminology is used throughout.</p>
+  </section>
+
+  <section id="result" class="result-card">
+    <div class="empty">Select a pathogen or clinical situation to show the draft ICU isolation recommendation.</div>
+  </section>
+</main>
+
+<script>
+const priorities = {
+  "ICU-1": { name: "Critical priority — side room now / do not cohort", colour: "linear-gradient(90deg, #1f1f1f, #3b235a)" },
+  "ICU-2": { name: "Side room now unless displaced by ICU-1", colour: "#b00020" },
+  "ICU-3": { name: "Side room preferred / cohort confirmed same pathogen if necessary", colour: "#d96c00" },
+  "ICU-4": { name: "Side room only if transmission triggers present", colour: "#c49500" },
+  "ICU-5": { name: "No side room normally required", colour: "#137333" }
+};
+
+const ruleBase = [
+  {id:"vhf_hcid",displayName:"VHF query / novel HCID / SARS / MERS / avian influenza",aliases:["viral haemorrhagic fever","hcid","sars","mers","avian flu","avian influenza","ebola"],priority:"ICU-1",route:["Airborne/contact/droplet as directed by organism-specific specialist guidance"],placement:"Immediate side room. Negative pressure if available. Door closed. Escalate to ICU consultant, nurse in charge, site manager and microbiology/IPC.",ppe:["Specialist PPE according to organism-specific local/national pathway","Restrict staff entry and log entrants"],hand:"Follow specialist pathway. Use soap and water if visibly soiled; otherwise follow local HCID/IPC hand hygiene instruction.",equipment:"Dedicated equipment. Do not share devices unless explicitly agreed and decontaminated according to specialist instruction.",cleaning:"Specialist/environmental cleaning plan required.",cohorting:"Do not cohort.",releaseCategory:"Specialist release only",deescalation:["Only when HCID/VHF excluded or specialist advice confirms safe move."],hardStops:["Do not release out of hours without specialist agreement."]},
+  {id:"tb",displayName:"Open pulmonary TB / MDR-TB risk",aliases:["tuberculosis","pulmonary tb","mdr tb","mdrtb","afb"],priority:"ICU-1",route:["Airborne"],placement:"Immediate side room. Negative pressure preferred/required if available. Door closed.",ppe:["FFP3 respirator for staff entering room or performing respiratory care","Eye protection if splash/aerosol risk"],hand:"Alcohol gel unless hands visibly soiled; soap and water if visibly soiled.",equipment:"Dedicated equipment where possible.",cleaning:"Routine plus local airborne/TB terminal cleaning process before room release.",cohorting:"Do not cohort unless specialist-led exceptional plan.",releaseCategory:"Specialist release only",deescalation:["Only after ID/IPC/microbiology decision."],hardStops:["MDR-TB risk","Unresolved airborne risk","No specialist decision"]},
+  {id:"candida_auris",displayName:"Candida auris / Candidozyma auris",aliases:["c auris","candidozyma auris","candida auris"],priority:"ICU-1",route:["Contact","Environmental"],placement:"Side room for duration of admission unless IPC changes plan.",ppe:["Gloves and apron/gown according to local policy and exposure risk"],hand:"Alcohol gel unless hands visibly soiled; soap and water if visibly soiled or local organism-specific instruction says so.",equipment:"Dedicated equipment. Minimise shared devices.",cleaning:"Enhanced organism-specific environmental cleaning; terminal clean before room release.",cohorting:"Do not cohort casually. IPC-led plan only.",releaseCategory:"Side room for duration of admission",deescalation:["Do not release out of hours unless IPC changes the plan."],hardStops:["Do not release without IPC/microbiology agreement."]},
+  {id:"cro_cpe",displayName:"CRO / CPE",aliases:["cro","cpe","carbapenem resistant","carbapenemase","carbapenemase-producing","cre"],priority:"ICU-1",route:["Contact","Environmental"],placement:"Side room for duration of admission under local policy. Dedicated equipment.",ppe:["Gloves and apron/gown according to local policy and exposure risk"],hand:"Alcohol gel unless hands visibly soiled; soap and water if visibly soiled.",equipment:"Dedicated equipment where possible; minimise shared devices.",cleaning:"Enhanced cleaning according to local MDRO policy; terminal clean before room release.",cohorting:"Cohort only if IPC-led.",releaseCategory:"Side room for duration of admission",deescalation:["Do not release out of hours unless IPC changes the plan."],hardStops:["Do not release without IPC/microbiology agreement."]},
+  {id:"measles",displayName:"Measles",aliases:["rubeola"],priority:"ICU-2",route:["Airborne"],placement:"Side room. Door closed. Do not rely on assumed staff immunity for room allocation.",ppe:["FFP3 respirator for non-immune or uncertain staff; follow local measles PPE policy","Use immune staff where possible"],hand:"Alcohol gel unless hands visibly soiled; soap and water if visibly soiled.",equipment:"Dedicated equipment where possible.",cleaning:"Terminal clean before room release according to local airborne infection policy.",cohorting:"Do not cohort unless specialist/IPC plan.",releaseCategory:"Senior check release",deescalation:["Usually after 4 days from rash onset if safe.","Senior check if ICU/vulnerable exposure concern."],hardStops:["Undocumented exposure risk","Immunosuppressed adjacent patients","Outbreak/cluster","IPC temporary hold"]},
+  {id:"varicella",displayName:"Chickenpox / disseminated shingles / fever and rash unknown cause",aliases:["varicella","chicken pox","chickenpox","shingles","zoster","fever rash","fever and rash"],priority:"ICU-2",route:["Airborne","Contact"],placement:"Side room. Treat as airborne/contact until clarified.",ppe:["Gloves and apron/gown for contact with patient/environment","Respiratory protection according to local varicella/shingles policy, especially if non-immune or disseminated disease"],hand:"Alcohol gel unless hands visibly soiled; soap and water if visibly soiled.",equipment:"Dedicated equipment where possible.",cleaning:"Terminal clean before room release.",cohorting:"Do not cohort unless IPC agrees.",releaseCategory:"Senior check release",deescalation:["Varicella/shingles: when lesions are dry and crusted.","Fever/rash: not until diagnosis clarified or alternative non-infectious diagnosis confirmed."],hardStops:["Undiagnosed fever and rash","New lesions","Disseminated disease","Immunosuppressed patient or adjacent patient"]},
+  {id:"c_difficile_noro",displayName:"C. difficile / norovirus / uncontrolled diarrhoea or vomiting",aliases:["c diff","cdiff","clostridioides","norovirus","diarrhoea","vomiting","loose stool"],priority:"ICU-2",route:["Contact","Enteric"],placement:"Side room while symptomatic. Own commode/toilet pathway.",ppe:["Gloves and apron for patient/environment contact","Gown if high contamination risk"],hand:"Soap and water after patient or environment contact. Alcohol gel alone is not sufficient for suspected/confirmed C. difficile or norovirus.",equipment:"Dedicated equipment where possible, especially commode, BP cuff, thermometer and stethoscope.",cleaning:"Enhanced enteric/sporicidal cleaning according to local policy. Terminal clean before room release.",cohorting:"Cohort only under IPC/outbreak plan.",releaseCategory:"Senior check release",deescalation:["48 hours symptom-free","Formed stool or bowel habit returned to baseline","No vomiting","No outbreak/cluster","Terminal clean completed or requested"],hardStops:["Ongoing diarrhoea","Faecal incontinence","Vomiting","Suspected outbreak/cluster"]},
+  {id:"neutropaenia",displayName:"Prolonged neutropaenia after BMT / intensive chemotherapy",aliases:["neutropenia","neutropaenia","bone marrow transplant","bmt","chemotherapy","protective isolation"],priority:"ICU-2",route:["Protective isolation"],placement:"Protective isolation in side room where possible. This protects the patient rather than protecting the unit from the patient.",ppe:["Standard precautions","Additional PPE according to local protective isolation policy and care activity"],hand:"Alcohol gel unless hands visibly soiled; soap and water if visibly soiled.",equipment:"Clean/dedicated equipment where possible.",cleaning:"Enhanced attention to environmental cleanliness.",cohorting:"Do not place next to enteric or respiratory infection if displaced from side room.",releaseCategory:"Senior check release",deescalation:["Until neutrophil recovery or haem-oncology/microbiology plan.","May be displaced by ICU-1 only with consultant decision and mitigation."],hardStops:["Nearby enteric/respiratory infection","No senior decision if displaced"]},
+  {id:"covid",displayName:"COVID-19",aliases:["covid","sars-cov-2","coronavirus"],priority:"ICU-3",route:["Droplet","Contact","Airborne risk during AGPs"],placement:"Side room preferred. If no room, cohort confirmed same pathogen only. Avoid mixed viral bays.",ppe:["FRSM for routine care per local policy","FFP3 for AGPs or airborne-risk procedures","Eye protection if splash/respiratory secretion risk","Gloves and apron/gown according to exposure risk"],hand:"Alcohol gel unless hands visibly soiled; soap and water if visibly soiled.",equipment:"Dedicated equipment where possible.",cleaning:"Enhanced cleaning; terminal clean before side-room release if moving out.",cohorting:"Cohort confirmed COVID-19 with confirmed COVID-19 only, unless IPC explicitly agrees otherwise.",releaseCategory:"Criteria-led release",deescalation:["Minimum 5 days and fever-free for 48 hours","Maximum 10 days if not immunosuppressed","14 days if immunosuppressed","Secretions controlled and no outbreak/cluster"],hardStops:["Uncontrolled secretions","NIV/HFNO/frequent suction burden","Outbreak/cluster","Immunosuppressed patient requiring longer isolation"]},
+  {id:"influenza",displayName:"Influenza A/B including H1N1",aliases:["flu","influenza","h1n1"],priority:"ICU-3",route:["Droplet","Contact","Airborne risk during AGPs"],placement:"Side room preferred. If no room, cohort confirmed same pathogen only.",ppe:["FRSM for routine care per local policy","FFP3 for AGPs","Eye protection if splash/respiratory secretion risk","Gloves and apron/gown according to exposure risk"],hand:"Alcohol gel unless hands visibly soiled; soap and water if visibly soiled.",equipment:"Dedicated equipment where possible.",cleaning:"Enhanced cleaning; terminal clean before side-room release if moving out.",cohorting:"Cohort confirmed same influenza type/pathogen if necessary.",releaseCategory:"Criteria-led release",deescalation:["5 days from symptom onset if clinically improving","Fever resolved or improving","Secretions controlled","No outbreak/cluster"],hardStops:["Uncontrolled secretions","NIV/HFNO/frequent suction burden","Outbreak/cluster"]},
+  {id:"rsv_other",displayName:"RSV / other significant respiratory virus",aliases:["rsv","respiratory virus","parainfluenza","metapneumovirus","adenovirus"],priority:"ICU-3",route:["Droplet","Contact","Airborne risk during AGPs"],placement:"Side room preferred, especially with ventilated/tracheostomy/NIV/HFNO care or heavy secretions.",ppe:["FRSM for routine care per local policy","FFP3 for AGPs","Eye protection if splash/respiratory secretion risk","Gloves and apron/gown according to exposure risk"],hand:"Alcohol gel unless hands visibly soiled; soap and water if visibly soiled.",equipment:"Dedicated equipment where possible.",cleaning:"Enhanced cleaning; terminal clean before side-room release if moving out.",cohorting:"Cohort confirmed same pathogen only.",releaseCategory:"Senior check release",deescalation:["Clinically improving","Secretions controlled","No uncontrolled AGP/suction burden","No outbreak/cluster"],hardStops:["Uncontrolled secretions","NIV/HFNO/frequent suction burden","Outbreak/cluster","Immunosuppressed adjacent patient"]},
+  {id:"pertussis_mumps_mening",displayName:"Pertussis / mumps / meningococcal disease before treatment window",aliases:["whooping cough","pertussis","mumps","meningococcal","meningitis"],priority:"ICU-3",route:["Droplet"],placement:"Side room initially. Review after effective treatment or time window.",ppe:["FRSM","Eye protection if splash/respiratory secretion risk","Gloves and apron/gown according to exposure risk"],hand:"Alcohol gel unless hands visibly soiled; soap and water if visibly soiled.",equipment:"Dedicated equipment where possible.",cleaning:"Routine/enhanced cleaning according to local policy.",cohorting:"Do not cohort unless same confirmed pathogen and IPC agrees.",releaseCategory:"Criteria-led release",deescalation:["Pertussis: after 48 hours effective treatment or 21 days from onset if untreated","Mumps: 5 days after onset of swelling","Meningococcal disease: after 24–48 hours of appropriate antibiotics"],hardStops:["Timing unclear","Ongoing uncontrolled secretions","Outbreak/cluster"]},
+  {id:"hep_a",displayName:"Hepatitis A",aliases:["hepatitis a","hep a"],priority:"ICU-3",route:["Contact","Enteric"],placement:"Side room preferred if incontinent, confused, diarrhoeal or high-contact nursing needs.",ppe:["Gloves and apron for contact with patient/environment","Gown if high contamination risk"],hand:"Soap and water after contact if enteric contamination risk; alcohol gel acceptable where no soiling/enteric contamination and local policy permits.",equipment:"Dedicated equipment if contamination risk.",cleaning:"Enhanced cleaning if enteric contamination risk.",cohorting:"Generally avoid unless IPC plan.",releaseCategory:"Criteria-led release",deescalation:["After 1 week from symptoms if contamination risk controlled."],hardStops:["Faecal incontinence","Diarrhoea/vomiting","Poor containment"]},
+  {id:"gas",displayName:"Group A streptococcus with uncontrolled secretions or wounds",aliases:["group a strep","gas","streptococcus pyogenes"],priority:"ICU-3",route:["Droplet/contact depending on site and secretions"],placement:"Side room initially if uncontrolled secretions or wounds.",ppe:["FRSM if respiratory secretions","Gloves and apron/gown according to wound/secretions exposure risk"],hand:"Alcohol gel unless hands visibly soiled; soap and water if visibly soiled.",equipment:"Dedicated equipment if wound/secretions contamination risk.",cleaning:"Routine/enhanced cleaning according to contamination risk.",cohorting:"Avoid unless IPC agrees.",releaseCategory:"Criteria-led release",deescalation:["After 24–48 hours of appropriate antibiotics","Secretions/wounds controlled"],hardStops:["Uncontrolled secretions","Uncontrolled wound drainage","Timing unclear"]},
+  {id:"scabies_crusted",displayName:"Crusted / Norwegian scabies",aliases:["crusted scabies","norwegian scabies"],priority:"ICU-3",route:["Contact","Environmental"],placement:"Side room until treatment and environmental plan completed.",ppe:["Gloves and apron/gown for patient/environment contact"],hand:"Soap and water after contact if contamination/cream/skin scale present; otherwise follow local hand hygiene policy.",equipment:"Dedicated equipment where possible.",cleaning:"Environmental cleaning/linen plan required.",cohorting:"Do not cohort unless IPC plan.",releaseCategory:"Specialist release only",deescalation:["Prefer IPC confirmation before release."],hardStops:["Treatment incomplete","Environmental/linen plan incomplete","Staff/patient exposure concern"]},
+  {id:"mrsa",displayName:"MRSA",aliases:["mrsa","meticillin resistant","methicillin resistant"],priority:"ICU-4",route:["Contact","Droplet/contact if respiratory secretions"],placement:"Side room only if transmission triggers present.",triggers:["MRSA pneumonia","tracheostomy/ETT with heavy secretions","productive cough","open/draining wound","burns/skin breakdown","uncontrolled sputum/saliva"],ppe:["Gloves and apron for contact precautions","FRSM/eye protection if respiratory secretion splash risk"],hand:"Alcohol gel unless hands visibly soiled; soap and water if visibly soiled.",equipment:"Dedicated equipment where possible. Clean shared equipment after every use.",cleaning:"Routine/enhanced cleaning according to contamination risk.",cohorting:"No casual cohorting; open bay acceptable if no triggers and adjacent-patient risk acceptable.",releaseCategory:"Criteria-led release",deescalation:["Release when secretions/wounds controlled and no major transmission trigger remains."],hardStops:["Uncontrolled secretions","Open/draining wound","Adjacent highly vulnerable patient"]},
+  {id:"resistant_coliform",displayName:"Resistant coliform / ESBL / AmpC",aliases:["esbl","ampc","resistant coliform","e coli","klebsiella"],priority:"ICU-4",route:["Contact"],placement:"Side room only if transmission triggers present.",triggers:["productive cough with organism in sputum","urinary/faecal leakage","draining wound","uncontrolled diarrhoea","highly resistant phenotype"],ppe:["Gloves and apron for contact precautions"],hand:"Alcohol gel unless hands visibly soiled; soap and water if visibly soiled.",equipment:"Dedicated equipment where possible. Clean shared equipment after every use.",cleaning:"Routine/enhanced cleaning according to contamination risk.",cohorting:"Avoid cohorting unless IPC agrees.",releaseCategory:"Criteria-led release",deescalation:["Release when leakage/diarrhoea/wound drainage resolved and no sputum transmission concern.","Senior/specialist check if highly resistant phenotype."],hardStops:["Highly resistant phenotype","Uncontrolled leakage","Uncontrolled diarrhoea","Draining wound"]},
+  {id:"vre",displayName:"VRE",aliases:["vre","vancomycin resistant enterococcus"],priority:"ICU-4",route:["Contact"],placement:"Side room only if transmission triggers present.",triggers:["diarrhoea/faecal incontinence","open abdominal or wound source","urinary leakage","shared-equipment risk","adjacent highly vulnerable patient"],ppe:["Gloves and apron for contact precautions"],hand:"Alcohol gel unless hands visibly soiled; soap and water if visibly soiled.",equipment:"Dedicated equipment where possible. Clean shared equipment after every use.",cleaning:"Routine/enhanced cleaning according to contamination risk.",cohorting:"Avoid cohorting unless IPC agrees.",releaseCategory:"Criteria-led release",deescalation:["Release when stool/urine/wound containment controlled and adjacent-patient risk acceptable."],hardStops:["Faecal incontinence","Open abdominal/wound source","Urinary leakage","Adjacent highly vulnerable patient"]},
+  {id:"bbv",displayName:"HIV / HBV / HCV with profuse bleeding or uncontrolled body-fluid contamination",aliases:["hiv","hbv","hcv","hepatitis b","hepatitis c","blood borne virus","blood-borne virus"],priority:"ICU-4",route:["Standard precautions; contact precautions if blood/body-fluid contamination"],placement:"Side room only if profuse bleeding or uncontrolled body-fluid contamination.",ppe:["Gloves and apron/gown according to blood/body-fluid exposure risk","Eye/face protection if splash risk"],hand:"Alcohol gel unless hands visibly soiled; soap and water if visibly soiled.",equipment:"Clean shared equipment after use; dedicate if heavy contamination risk.",cleaning:"Blood/body-fluid spill management and terminal clean if side room used.",cohorting:"No cohorting issue for BBV alone.",releaseCategory:"Criteria-led release",deescalation:["Release once bleeding/body-fluid contamination is controlled."],hardStops:["Ongoing profuse bleeding","Uncontrolled body-fluid contamination"]},
+  {id:"green",displayName:"No side room normally required: Legionella, ordinary lice/scabies, BBV without bleeding",aliases:["legionella","legionnaires","lice","ordinary scabies","bbv without bleeding"],priority:"ICU-5",route:["Standard precautions unless other clinical risks present"],placement:"No side room normally required.",ppe:["Standard precautions; add contact precautions for lice/scabies treatment as local policy requires"],hand:"Alcohol gel unless hands visibly soiled; soap and water if visibly soiled.",equipment:"Routine equipment cleaning.",cleaning:"Routine cleaning, or local lice/scabies linen/environmental process if relevant.",cohorting:"No special cohorting restriction unless another infection/risk applies.",releaseCategory:"Criteria-led release",deescalation:["No side room normally required from outset unless a separate transmission trigger is present."],hardStops:["Crusted scabies should be selected separately","Profuse bleeding/body-fluid contamination should be selected separately"]}
+];
+
+const modifierRules = {
+  ventilated: {note:"Ventilated/tracheostomy/NIV/HFNO status increases practical respiratory transmission risk; be cautious about open-bay placement for respiratory pathogens."},
+  secretions: {note:"Uncontrolled secretions/frequent suction are a transmission trigger. Do not criteria-release respiratory/contact cases until controlled."},
+  diarrhoea: {note:"Diarrhoea/vomiting/faecal incontinence is an enteric hard stop unless resolved and containment/cleaning criteria are met."},
+  wound: {note:"Draining wounds/leaking drains/body-fluid contamination are contact-transmission triggers."},
+  immunosuppressed: {note:"Immunosuppression or highly vulnerable adjacent patients increases caution for respiratory, rash and MDRO cases."},
+  outbreak: {note:"Suspected outbreak/cluster or IPC temporary hold is a hard stop: do not release side room out of hours."},
+  noSideRoom: {note:"If no side room is available, escalate to ICU consultant, nurse in charge, site manager and microbiology/IPC; document which lower-risk patient is displaced and why."}
+};
+
+let selected = ruleBase[0];
+
+function esc(s) { return String(s || "").replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+function getSelectedModifiers() { return [...document.querySelectorAll('#modifiers input:checked')].map(x => x.value); }
+function list(items) { return `<ul>${(items || []).map(x => `<li>${esc(x)}</li>`).join("")}</ul>`; }
+
+function modifierWarnings(rule, mods) {
+  const notes = mods.map(m => modifierRules[m].note);
+  const hard = [];
+  if (mods.includes("outbreak")) hard.push("Outbreak/cluster/IPC hold selected.");
+  if (mods.includes("diarrhoea") && !["c_difficile_noro","hep_a"].includes(rule.id)) hard.push("Enteric symptoms selected: consider C. difficile/norovirus/undiagnosed diarrhoea pathway as well.");
+  if ((mods.includes("ventilated") || mods.includes("secretions")) && ["covid","influenza","rsv_other","mrsa"].includes(rule.id)) hard.push("Respiratory support/secretions selected: avoid release/open-bay placement until secretion and AGP burden are controlled.");
+  if (mods.includes("noSideRoom") && ["ICU-1","ICU-2"].includes(rule.priority)) hard.push("No side room available for high-priority patient: immediate escalation required.");
+  return {notes, hard};
+}
+
+function releaseTag(category) {
+  const map = {"Criteria-led release":"criteria","Senior check release":"senior","Specialist release only":"specialist","Side room for duration of admission":"duration"};
+  return `<span class="tag ${map[category] || 'senior'}">${esc(category)}</span>`;
+}
+
+function documentationNote(rule) {
+  const mods = getSelectedModifiers();
+  const p = priorities[rule.priority];
+  const modText = mods.length ? ` Modifiers selected: ${mods.map(m => modifierRules[m].note).join(" ")}` : "";
+  return `ICU side-room/isolation review: ${rule.displayName}. Priority: ${rule.priority} (${p.name}). Placement: ${rule.placement} Precautions: ${rule.route.join(", ")}. PPE: ${rule.ppe.join("; ")}. Hand hygiene: ${rule.hand} De-escalation category: ${rule.releaseCategory}. Release criteria: ${rule.deescalation.join("; ")}. Side-room release does not mean no precautions; continue standard precautions and any remaining contact/droplet/enteric precautions as indicated.${modText}`;
+}
+
+function sortedRules(filterText = "") {
+  const q = filterText.trim().toLowerCase();
+  return [...ruleBase]
+    .filter(r => [r.displayName, ...(r.aliases || [])].join(" ").toLowerCase().includes(q))
+    .sort((a, b) => a.displayName.localeCompare(b.displayName, "en-GB", { sensitivity: "base" }));
+}
+
+function renderDropdown() {
+  const q = document.getElementById("search").value;
+  const select = document.getElementById("conditionSelect");
+  const filtered = sortedRules(q);
+  const currentId = selected ? selected.id : (filtered[0] && filtered[0].id);
+  select.innerHTML = filtered.map(r => `<option value="${esc(r.id)}">${esc(r.displayName)} — ${esc(r.priority)}</option>`).join("");
+  if (!filtered.length) {
+    select.innerHTML = `<option value="">No match — clear the filter or use the closest clinical syndrome</option>`;
+    return;
+  }
+  if (filtered.some(r => r.id === currentId)) {
+    select.value = currentId;
+  } else {
+    selected = filtered[0];
+    select.value = selected.id;
+    renderResult();
+  }
+}
+
+function renderResult() {
+  const rule = selected;
+  const p = priorities[rule.priority];
+  const mods = getSelectedModifiers();
+  const mw = modifierWarnings(rule, mods);
+  const triggerBox = rule.triggers ? `<div class="box warning"><h3>Side-room triggers</h3>${list(rule.triggers)}</div>` : "";
+  document.getElementById("result").innerHTML = `
+    <div class="priority-head" style="background:${p.colour}">
+      <div><h2>${esc(rule.priority)} · ${esc(p.name)}</h2><div class="sub">${esc(rule.displayName)}</div></div>
+      <div class="pill">${esc(rule.releaseCategory)}</div>
+    </div>
+    <div class="content">
+      ${mw.hard.length ? `<div class="box danger"><h3>Selected modifier warnings / hard stops</h3>${list(mw.hard)}</div>` : ""}
+      ${mw.notes.length ? `<div class="box warning"><h3>Modifier notes</h3>${list(mw.notes)}</div>` : ""}
+      <div class="grid2"><div class="box"><h3>Placement</h3><p>${esc(rule.placement)}</p></div><div class="box"><h3>Route / precautions</h3>${list(rule.route)}</div></div>
+      <div class="grid2"><div class="box"><h3>PPE</h3>${list(rule.ppe)}</div><div class="box"><h3>Hand hygiene</h3><p>${esc(rule.hand)}</p></div></div>
+      <div class="grid2"><div class="box"><h3>Equipment</h3><p>${esc(rule.equipment)}</p></div><div class="box"><h3>Cleaning</h3><p>${esc(rule.cleaning)}</p></div></div>
+      ${triggerBox}
+      <div class="grid2"><div class="box"><h3>Cohorting</h3><p>${esc(rule.cohorting)}</p></div><div class="box ok"><h3>De-escalation / side-room release</h3><p>${releaseTag(rule.releaseCategory)}</p>${list(rule.deescalation)}</div></div>
+      <div class="box danger"><h3>Hard stops</h3>${list(rule.hardStops)}</div>
+      <div class="box"><h3>Copyable documentation note</h3><textarea id="docNote" rows="5" readonly>${esc(documentationNote(rule))}</textarea></div>
+      <div class="box warning small"><strong>Important:</strong> Side-room release ≠ no precautions. Continue standard precautions for all patients and continue contact/droplet/enteric precautions, organism alerts, dedicated equipment and cleaning requirements where still indicated.</div>
+    </div>`;
+}
+
+document.getElementById("search").addEventListener("input", () => {
+  renderDropdown();
+  const select = document.getElementById("conditionSelect");
+  if (select.value) {
+    selected = ruleBase.find(r => r.id === select.value);
+    renderResult();
+  }
+});
+document.getElementById("conditionSelect").addEventListener("change", () => {
+  const id = document.getElementById("conditionSelect").value;
+  if (id) {
+    selected = ruleBase.find(r => r.id === id);
+    renderResult();
+  }
+});
+document.querySelectorAll("#modifiers input").forEach(cb => cb.addEventListener("change", renderResult));
+document.getElementById("printBtn").addEventListener("click", () => window.print());
+document.getElementById("resetBtn").addEventListener("click", () => {
+  document.getElementById("search").value = "";
+  document.querySelectorAll("#modifiers input").forEach(x => x.checked = false);
+  selected = ruleBase[0];
+  renderDropdown();
+  renderResult();
+});
+document.getElementById("copyBtn").addEventListener("click", async () => {
+  const note = documentationNote(selected);
+  try { await navigator.clipboard.writeText(note); }
+  catch (e) {
+    const temp = document.createElement("textarea");
+    temp.value = note; document.body.appendChild(temp); temp.select(); document.execCommand("copy"); document.body.removeChild(temp);
+  }
+  const status = document.getElementById("copyStatus");
+  status.style.display = "inline";
+  setTimeout(() => status.style.display = "none", 1200);
+});
+
+renderDropdown();
+renderResult();
+</script>
+</body>
+</html>
