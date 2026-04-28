@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ICU Isolation Decision Aid — Test Version</title>
+  <title>ICU Side-room Allocation Decision Aid — Test Version</title>
   <style>
     :root {
       --critical: #3b235a;
@@ -73,7 +73,7 @@
 </head>
 <body>
 <header>
-  <h1>ICU Isolation Decision Aid — Test Version</h1>
+  <h1>ICU Side-room Allocation Decision Aid — Test Version</h1>
   <p>Pathogen/situation lookup for side-room priority, precaution package and de-escalation criteria.</p>
   <div class="banner"><strong>Governance note:</strong> Draft decision-support prototype. It supports criteria-led implementation of locally agreed rules; it does not replace IPC, microbiology or senior clinical judgement.</div>
 </header>
@@ -156,7 +156,7 @@ const modifierRules = {
   noSideRoom: {note:"If no side room is available, escalate to ICU consultant, nurse in charge, site manager and microbiology/IPC; document which lower-risk patient is displaced and why."}
 };
 
-let selected = ruleBase[0];
+let selected = null;
 
 function esc(s) { return String(s || "").replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 function getSelectedModifiers() { return [...document.querySelectorAll('#modifiers input:checked')].map(x => x.value); }
@@ -195,22 +195,36 @@ function renderDropdown() {
   const q = document.getElementById("search").value;
   const select = document.getElementById("conditionSelect");
   const filtered = sortedRules(q);
-  const currentId = selected ? selected.id : (filtered[0] && filtered[0].id);
-  select.innerHTML = filtered.map(r => `<option value="${esc(r.id)}">${esc(r.displayName)} — ${esc(r.priority)}</option>`).join("");
+
   if (!filtered.length) {
     select.innerHTML = `<option value="">No match — clear the filter or use the closest clinical syndrome</option>`;
+    selected = null;
+    renderResult();
     return;
   }
-  if (filtered.some(r => r.id === currentId)) {
-    select.value = currentId;
-  } else {
-    selected = filtered[0];
+
+  select.innerHTML =
+    `<option value="">Select pathogen / clinical scenario</option>` +
+    filtered.map(r => `<option value="${esc(r.id)}">${esc(r.displayName)} — ${esc(r.priority)}</option>`).join("");
+
+  if (selected && filtered.some(r => r.id === selected.id)) {
     select.value = selected.id;
-    renderResult();
+  } else {
+    select.value = "";
   }
 }
 
 function renderResult() {
+  if (!selected) {
+    document.getElementById("result").innerHTML = `
+      <div class="empty">
+        <strong>Pending your selection</strong><br>
+        Select a pathogen or clinical situation to show the draft ICU isolation recommendation.
+      </div>
+    `;
+    return;
+  }
+
   const rule = selected;
   const p = priorities[rule.priority];
   const mods = getSelectedModifiers();
@@ -236,26 +250,21 @@ function renderResult() {
 }
 
 document.getElementById("search").addEventListener("input", () => {
+  selected = null;
   renderDropdown();
-  const select = document.getElementById("conditionSelect");
-  if (select.value) {
-    selected = ruleBase.find(r => r.id === select.value);
-    renderResult();
-  }
+  renderResult();
 });
 document.getElementById("conditionSelect").addEventListener("change", () => {
   const id = document.getElementById("conditionSelect").value;
-  if (id) {
-    selected = ruleBase.find(r => r.id === id);
-    renderResult();
-  }
+  selected = id ? ruleBase.find(r => r.id === id) : null;
+  renderResult();
 });
 document.querySelectorAll("#modifiers input").forEach(cb => cb.addEventListener("change", renderResult));
 document.getElementById("printBtn").addEventListener("click", () => window.print());
 document.getElementById("resetBtn").addEventListener("click", () => {
   document.getElementById("search").value = "";
   document.querySelectorAll("#modifiers input").forEach(x => x.checked = false);
-  selected = ruleBase[0];
+  selected = null;
   renderDropdown();
   renderResult();
 });
